@@ -1,0 +1,223 @@
+{
+  "p2_golden_2026_04_23": [
+    {
+      "name": "stop_sign_compliance",
+      "value": 1.0,
+      "passed": true,
+      "details": {
+        "compliance_per_agent": {
+          "agent_00": true,
+          "agent_01": true,
+          "agent_02": true,
+          "agent_03": true
+        },
+        "threshold_mps": 0.0,
+        "required_dwell_frames": 10
+      }
+    },
+    {
+      "name": "red_light_violation_rate",
+      "value": 0.0,
+      "passed": true,
+      "details": {
+        "violating_agents": [],
+        "total_agents": 4
+      }
+    },
+    {
+      "name": "collision_proxy",
+      "value": 0.0,
+      "passed": true,
+      "details": {
+        "collision_rows": 0
+      }
+    },
+    {
+      "name": "route_completion",
+      "value": 1.0,
+      "passed": true,
+      "details": {
+        "reached_goal": {
+          "agent_00": true,
+          "agent_01": true,
+          "agent_02": true,
+          "agent_03": true
+        },
+        "goal_node_id": "node_4_4"
+      }
+    },
+    {
+      "name": "speed_ks_test",
+      "value": 1.0,
+      "passed": true,
+      "details": {
+        "ks_statistic": 0.0,
+        "p_value": 1.0,
+        "threshold": 0.05,
+        "interpretation": "no drift"
+      }
+    },
+    {
+      "name": "route_plan_adherence",
+      "value": 1.0,
+      "passed": true,
+      "details": {
+        "compliance_per_agent": {
+          "agent_00": true,
+          "agent_01": true,
+          "agent_02": true,
+          "agent_03": true
+        },
+        "deviations": {}
+      }
+    }
+  ],
+  "p2_noisy_2026_04_23": [
+    {
+      "name": "stop_sign_compliance",
+      "value": 1.0,
+      "passed": true,
+      "details": {
+        "compliance_per_agent": {
+          "agent_00": true,
+          "agent_01": true,
+          "agent_02": true,
+          "agent_03": true
+        },
+        "threshold_mps": 0.0,
+        "required_dwell_frames": 10
+      }
+    },
+    {
+      "name": "red_light_violation_rate",
+      "value": 0.0,
+      "passed": true,
+      "details": {
+        "violating_agents": [],
+        "total_agents": 4
+      }
+    },
+    {
+      "name": "collision_proxy",
+      "value": 0.0,
+      "passed": true,
+      "details": {
+        "collision_rows": 0
+      }
+    },
+    {
+      "name": "route_completion",
+      "value": 1.0,
+      "passed": true,
+      "details": {
+        "reached_goal": {
+          "agent_00": true,
+          "agent_01": true,
+          "agent_02": true,
+          "agent_03": true
+        },
+        "goal_node_id": "node_4_4"
+      }
+    },
+    {
+      "name": "speed_ks_test",
+      "value": 0.001116,
+      "passed": false,
+      "details": {
+        "ks_statistic": 0.6,
+        "p_value": 0.001116,
+        "threshold": 0.05,
+        "interpretation": "speed distribution drift detected"
+      }
+    },
+    {
+      "name": "route_plan_adherence",
+      "value": 1.0,
+      "passed": true,
+      "details": {
+        "compliance_per_agent": {
+          "agent_00": true,
+          "agent_01": true,
+          "agent_02": true,
+          "agent_03": true
+        },
+        "deviations": {}
+      }
+    }
+  ],
+  "p2_regression_2026_04_23": [
+    {
+      "name": "stop_sign_compliance",
+      "value": 0.75,
+      "passed": false,
+      "details": {
+        "compliance_per_agent": {
+          "agent_00": true,
+          "agent_01": false,
+          "agent_02": true,
+          "agent_03": true
+        },
+        "threshold_mps": 0.0,
+        "required_dwell_frames": 10
+      }
+    },
+    {
+      "name": "red_light_violation_rate",
+      "value": 0.25,
+      "passed": false,
+      "details": {
+        "violating_agents": [
+          "agent_00"
+        ],
+        "total_agents": 4
+      }
+    },
+    {
+      "name": "collision_proxy",
+      "value": 0.0,
+      "passed": true,
+      "details": {
+        "collision_rows": 0
+      }
+    },
+    {
+      "name": "route_completion",
+      "value": 1.0,
+      "passed": true,
+      "details": {
+        "reached_goal": {
+          "agent_00": true,
+          "agent_01": true,
+          "agent_02": true,
+          "agent_03": true
+        },
+        "goal_node_id": "node_4_4"
+      }
+    },
+    {
+      "name": "speed_ks_test",
+      "value": 0.0,
+      "passed": false,
+      "details": {
+        "ks_statistic": 0.694915,
+        "p_value": 0.0,
+        "threshold": 0.05,
+        "interpretation": "speed distribution drift detected"
+      }
+    },
+    {
+      "name": "route_plan_adherence",
+      "value": 1.0,
+      "passed": true,
+      "details": {
+        "compliance_per_agent": {
+          "agent_00": true,
+          "agent_01": true,
+          "agent_02": true,
+          "agent_03": true
+        },
+        "deviations": {}
+      }
+    }
+  ]
+}

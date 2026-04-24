@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>av-sim-bench — AV Simulation Evaluation Framework</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-dim: #8b949e;
+      --accent: #58a6ff;
+      --pass: #3fb950;
+      --fail: #f85149;
+      --heading: #f0f6fc;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    section { padding: 80px 0; border-bottom: 1px solid var(--border); }
+    section:last-child { border-bottom: none; }
+
+    h1, h2, h3 { color: var(--heading); }
+    h1 { font-size: 3rem; font-weight: 700; letter-spacing: -0.02em; }
+    h2 { font-size: 1.75rem; font-weight: 600; margin-bottom: 24px; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Hero */
+    #hero { text-align: center; padding: 120px 0 80px; }
+
+    .hero-tag {
+      display: inline-block;
+      background: rgba(88, 166, 255, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 0.78rem;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-dim);
+      max-width: 640px;
+      margin: 16px auto 36px;
+      line-height: 1.7;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #0d1117;
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 10px 22px;
+      border-radius: 6px;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; text-decoration: none; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      margin-left: 12px;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+
+    /* Section label */
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    /* Problem */
+    .problem-text {
+      font-size: 1.05rem;
+      max-width: 700px;
+      color: var(--text);
+      line-height: 1.85;
+    }
+
+    /* Project cards */
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+    }
+
+    .card-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .card p {
+      color: var(--text-dim);
+      font-size: 0.88rem;
+      margin-top: 8px;
+      line-height: 1.7;
+    }
+
+    .card-finding {
+      margin-top: 16px;
+      padding: 10px 14px;
+      background: rgba(88, 166, 255, 0.06);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 6px 6px 0;
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+
+    /* Architecture pre */
+    .arch-pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      overflow-x: auto;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.78rem;
+      line-height: 1.65;
+      color: #8b949e;
+      margin-bottom: 36px;
+      white-space: pre;
+    }
+
+    /* Metrics table */
+    .table-wrap { overflow-x: auto; margin-bottom: 36px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+
+    th {
+      background: var(--surface);
+      color: var(--text-dim);
+      font-weight: 600;
+      text-align: left;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.05em;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .metric-name {
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 0.8rem;
+      color: var(--heading);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .badge-pass { background: rgba(63, 185, 80, 0.12); color: var(--pass); }
+    .badge-fail { background: rgba(248, 81, 73, 0.12); color: var(--fail); }
+
+    /* Images */
+    .img-full {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: block;
+    }
+
+    .img-caption {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    /* GIF */
+    .gif-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+      text-align: center;
+    }
+
+    .gif-wrap img { max-width: 100%; border-radius: 6px; }
+
+    /* P3 grid */
+    .p3-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+    .p3-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .p3-card img { width: 100%; display: block; }
+
+    .p3-caption { padding: 16px; }
+    .p3-caption h4 { font-size: 0.9rem; color: var(--heading); margin-bottom: 6px; }
+    .p3-caption p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.6; }
+
+    .verdict {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .verdict-eq { background: rgba(63, 185, 80, 0.15); color: var(--pass); }
+    .verdict-div { background: rgba(248, 81, 73, 0.15); color: var(--fail); }
+
+    /* Callout */
+    .callout {
+      background: rgba(248, 81, 73, 0.07);
+      border: 1px solid rgba(248, 81, 73, 0.25);
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin-top: 28px;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    .callout strong { color: var(--fail); }
+
+    /* Tech stack */
+    .tech-line {
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 0.92rem;
+      color: var(--text-dim);
+      padding: 20px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      line-height: 2;
+    }
+
+    .tech-line span { color: var(--accent); }
+
+    /* Loading state */
+    .loading { color: var(--text-dim); font-style: italic; font-size: 0.88rem; }
+
+    footer {
+      padding: 40px 0;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 840px) {
+      h1 { font-size: 2.2rem; }
+      .cards { grid-template-columns: 1fr; }
+      .p3-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HERO ─────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-tag">AV Simulation &nbsp;·&nbsp; Evaluation &nbsp;·&nbsp; Safety Testing</div>
+    <h1>av-sim-bench</h1>
+    <p class="hero-subtitle">
+      An automated evaluation framework for autonomous driving simulators —
+      safety compliance, behavioural regression detection, and statistical fidelity testing.
+    </p>
+    <a href="https://github.com/venugopalbogireddy/av-sim-bench" target="_blank" rel="noopener" class="btn">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+          0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+          -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+          .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+          -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27
+          .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
+          .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+          0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      View on GitHub
+    </a>
+    <a href="#projects" class="btn btn-ghost">Explore projects</a>
+  </div>
+</section>
+
+<!-- ── PROBLEM ────────────────────────────────────────────── -->
+<section id="problem">
+  <div class="container">
+    <div class="section-label">The Problem</div>
+    <h2>Why simulation evaluation matters</h2>
+    <p class="problem-text">
+      Simulation is the primary scaling lever for AV safety testing. Before a simulator can be
+      trusted, you need a repeatable, automated way to grade its output against a known-good
+      baseline. Without it, regressions — agents that roll stop signs, run red lights, or drift
+      in cruise-speed distribution — go undetected until they reach the real world. This project
+      provides that harness: ingest logs, run metrics, get a verdict.
+    </p>
+  </div>
+</section>
+
+<!-- ── THREE PROJECTS ─────────────────────────────────────── -->
+<section id="projects">
+  <div class="container">
+    <div class="section-label">Projects</div>
+    <h2>Three evaluation systems</h2>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-tag">P1 — Log-Replay Evaluator</div>
+        <h3>Behavioural metrics on Parquet logs</h3>
+        <p>
+          Ingests columnar driving logs, runs 5 pure metric functions, emits
+          <code style="font-size:0.78rem;color:var(--accent)">metrics.json</code>
+          + a 4-panel dashboard PNG — answering whether the simulator did the right thing.
+        </p>
+        <div class="card-finding">
+          5 metrics &nbsp;·&nbsp; 3 scenarios &nbsp;·&nbsp; catches stop violations,
+          red-light runners, and KS-detected speed drift
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-tag">P2 — Grid-World Sim + Eval</div>
+        <h3>Graph-based driving simulator</h3>
+        <p>
+          NetworkX A* graph simulator with config-driven scenarios via YAML.
+          Adds a graph-aware route-plan adherence metric on top of the P1 suite.
+        </p>
+        <div class="card-finding">
+          6 metrics &nbsp;·&nbsp; A* pathfinding &nbsp;·&nbsp; route-plan adherence
+          catches off-path deviations
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-tag">P3 — Gen vs. Deterministic A/B</div>
+        <h3>Statistical fidelity testing</h3>
+        <p>
+          5 statistical tests (KS, Wasserstein, Anderson-Darling, Chi-square, Energy distance)
+          with BH-FDR correction across 4 traffic dimensions.
+        </p>
+        <div class="card-finding">
+          Catches miscalibrated generator on every dimension — even when safety metrics pass
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── P1 HOW IT WORKS ────────────────────────────────────── -->
+<section id="p1">
+  <div class="container">
+    <div class="section-label">Deep Dive &nbsp;·&nbsp; P1</div>
+    <h2>Log-Replay Evaluator — How it works</h2>
+
+    <h3 style="color:var(--text-dim);font-size:0.85rem;font-weight:500;margin-bottom:12px;">Architecture</h3>
+    <pre class="arch-pre">src/evaluator/
+  schema.py  → Parquet schema + map geometry constants (single source of truth)
+  log_gen.py → synthetic scenario generator (PyArrow + NumPy)
+  metrics.py → 5 pure metric functions (Pandas / SciPy)
+  cli.py     → Click CLI wiring everything together
+
+┌─────────────┐         ┌──────────────┐  Parquet   ┌─────────────────┐  MetricResult[]  ┌─────────────┐
+│  schema.py  │ ──────▶ │  log_gen.py  │ ─────────▶ │   metrics.py    │ ───────────────▶ │   cli.py    │
+│ (schema +   │         │ (3 scenarios)│            │  (5 pure fns)   │                  │  JSON + PNG │
+│  geometry)  │ ──────▶ └──────────────┘            └─────────────────┘                  └─────────────┘
+└─────────────┘</pre>
+
+    <h3 style="margin-bottom:16px;">Metrics — 3-scenario comparison</h3>
+    <div class="table-wrap">
+      <div id="metrics-table"><p class="loading">Loading metrics…</p></div>
+    </div>
+
+    <img src="assets/dashboard.png" alt="P1 4-panel dashboard: speed histogram, stop compliance bar, violation summary, KS p-value" class="img-full">
+    <p class="img-caption">
+      P1 dashboard: speed histogram, stop compliance bar, violation summary, and KS p-value across all 3 scenarios
+    </p>
+  </div>
+</section>
+
+<!-- ── P1 AGENT GIF ───────────────────────────────────────── -->
+<section id="gif">
+  <div class="container">
+    <div class="section-label">Agent Trajectories &nbsp;·&nbsp; P1</div>
+    <h2>Visualising agent behaviour</h2>
+    <p style="color:var(--text-dim);margin-bottom:28px;max-width:680px;line-height:1.8;">
+      Top-down 1D track animation: 4 agents as dots moving toward the goal (y&nbsp;=&nbsp;50&nbsp;m).
+      Stop zone (y&nbsp;=&nbsp;18–22&nbsp;m) and intersection (y&nbsp;=&nbsp;22–28&nbsp;m) are marked.
+      Golden agents stop and wait; regression agents blow through.
+    </p>
+    <div class="gif-wrap">
+      <img
+        src="assets/p1_agents.gif"
+        alt="P1 agent trajectory animation — golden vs regression"
+        onerror="this.parentElement.innerHTML='<p style=\'color:var(--text-dim);padding:40px;font-size:0.9rem\'>Animation will appear here (run scripts/gen_gif.py to generate).</p>'"
+      >
+    </div>
+  </div>
+</section>
+
+<!-- ── P3 RESULTS ─────────────────────────────────────────── -->
+<section id="p3">
+  <div class="container">
+    <div class="section-label">Statistical Fidelity &nbsp;·&nbsp; P3</div>
+    <h2>Gen vs. Deterministic A/B results</h2>
+    <p style="color:var(--text-dim);margin-bottom:32px;max-width:700px;line-height:1.8;">
+      Each generator is evaluated against the ground-truth baseline across 4 traffic dimensions
+      using 5 statistical tests with Benjamini-Hochberg FDR correction.
+    </p>
+
+    <div class="p3-grid">
+
+      <div class="p3-card">
+        <img src="assets/p3_deterministic.png" alt="Deterministic generator — statistical test results">
+        <div class="p3-caption">
+          <div class="verdict verdict-eq">Equivalent</div>
+          <h4>Deterministic generator</h4>
+          <p>Reproduces ground-truth distributions exactly. All 5 statistical tests pass across all 4 traffic dimensions.</p>
+        </div>
+      </div>
+
+      <div class="p3-card">
+        <img src="assets/p3_well_tuned.png" alt="Well-tuned stochastic generator — statistical test results">
+        <div class="p3-caption">
+          <div class="verdict verdict-eq">Equivalent</div>
+          <h4>Stochastic — well-tuned</h4>
+          <p>Slight variation within acceptable bounds. Statistical tests confirm distributional equivalence to the baseline.</p>
+        </div>
+      </div>
+
+      <div class="p3-card">
+        <img src="assets/p3_miscalibrated.png" alt="Miscalibrated stochastic generator — statistical test results">
+        <div class="p3-caption">
+          <div class="verdict verdict-div">Divergent</div>
+          <h4>Stochastic — miscalibrated</h4>
+          <p>Passes all safety-compliance metrics, but fails all 5 statistical tests. The fidelity gap is invisible to rule-based checks alone.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="callout">
+      <strong>Key finding:</strong> The miscalibrated generator passes every safety metric —
+      stop compliance, red-light rate, collision proxy, and route completion — yet fails all
+      5 statistical fidelity tests across every traffic dimension. Safety metrics are necessary
+      but not sufficient. Statistical equivalence testing catches what rules miss.
+    </div>
+  </div>
+</section>
+
+<!-- ── P2 DASHBOARD ───────────────────────────────────────── -->
+<section id="p2">
+  <div class="container">
+    <div class="section-label">Deep Dive &nbsp;·&nbsp; P2</div>
+    <h2>Grid-World Simulator dashboard</h2>
+    <img src="assets/p2_dashboard.png" alt="P2 grid-world simulator dashboard — 6-metric evaluation" class="img-full">
+    <p class="img-caption">
+      P2 dashboard: 6-metric evaluation across 3 scenarios on the NetworkX A* simulator,
+      including route-plan adherence
+    </p>
+  </div>
+</section>
+
+<!-- ── TECH STACK ─────────────────────────────────────────── -->
+<section id="stack">
+  <div class="container">
+    <div class="section-label">Tech Stack</div>
+    <h2>Built with</h2>
+    <div class="tech-line">
+      <span>Python 3.11+</span> &nbsp;·&nbsp;
+      <span>Pandas</span> &nbsp;·&nbsp;
+      <span>PyArrow</span> &nbsp;·&nbsp;
+      <span>NumPy</span> &nbsp;·&nbsp;
+      <span>SciPy</span> &nbsp;·&nbsp;
+      <span>NetworkX</span> &nbsp;·&nbsp;
+      <span>Matplotlib</span> &nbsp;·&nbsp;
+      <span>Seaborn</span> &nbsp;·&nbsp;
+      <span>Click</span> &nbsp;·&nbsp;
+      <span>Pytest</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ─────────────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <p style="color:var(--text-dim);font-size:0.85rem;">
+      av-sim-bench &nbsp;·&nbsp; Venugopal Bogireddy &nbsp;·&nbsp; 2026
+    </p>
+  </div>
+</footer>
+
+<script>
+(async () => {
+  const el = document.getElementById('metrics-table');
+  try {
+    const res = await fetch('data/metrics.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    const scenarios = ['golden', 'noisy', 'regression'];
+    const metricOrder = [
+      'stop_sign_compliance',
+      'red_light_violation_rate',
+      'collision_proxy',
+      'route_completion',
+      'speed_ks_test'
+    ];
+    const metricLabels = {
+      stop_sign_compliance:     'Stop sign compliance',
+      red_light_violation_rate: 'Red-light violation rate',
+      collision_proxy:          'Collision proxy (count)',
+      route_completion:         'Route completion',
+      speed_ks_test:            'Speed KS test (p-value)'
+    };
+
+    const idx = {};
+    for (const sc of scenarios) {
+      idx[sc] = {};
+      for (const m of data[sc]) idx[sc][m.name] = m;
+    }
+
+    let html = `<table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          ${scenarios.map(s => `<th>${s.charAt(0).toUpperCase() + s.slice(1)}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>`;
+
+    for (const name of metricOrder) {
+      html += `<tr><td class="metric-name">${metricLabels[name]}</td>`;
+      for (const sc of scenarios) {
+        const m = idx[sc] && idx[sc][name];
+        if (!m) { html += `<td style="color:var(--text-dim)">—</td>`; continue; }
+        const cls = m.passed ? 'badge-pass' : 'badge-fail';
+        const icon = m.passed ? '✓' : '✗';
+        const val = typeof m.value === 'number'
+          ? (m.value === Math.floor(m.value) ? m.value : m.value.toFixed(2))
+          : m.value;
+        html += `<td><span class="badge ${cls}">${icon} ${val}</span></td>`;
+      }
+      html += `</tr>`;
+    }
+
+    html += `</tbody></table>`;
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = `<p style="color:var(--text-dim);font-size:0.85rem;">
+      Metrics table requires HTTP serving.
+      Run: <code style="color:var(--accent)">python3 -m http.server 8080</code>
+      from the docs/ folder, then open <code style="color:var(--accent)">http://localhost:8080</code>.
+    </p>`;
+  }
+})();
+</script>
+
+</body>
+</html>
