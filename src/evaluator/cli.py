@@ -405,5 +405,74 @@ def pipeline_run(configs_dir: str, out_data: str, out_eval: str, baseline_scenar
     _build_p2_dashboard(all_metrics, log_dfs, out_eval_path / "p2_dashboard.png")
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  P3 — Gen vs Deterministic A/B Evaluator
+# ═══════════════════════════════════════════════════════════════════════════
+
+@main.group()
+def ab() -> None:
+    """P3 A/B distribution comparison commands."""
+
+
+@ab.command("run")
+@click.option("--candidate", required=True,
+              type=click.Choice(["deterministic", "stochastic_well_tuned", "stochastic_miscalibrated"]),
+              help="Which candidate generator to compare against the baseline.")
+@click.option("--n-samples", default=1000, show_default=True, type=int,
+              help="Number of samples to draw from each generator.")
+@click.option("--out", default="outputs/p3", show_default=True, type=click.Path(),
+              help="Directory for JSON/Markdown reports and PNG plots.")
+@click.option("--no-viz", is_flag=True, default=False,
+              help="Skip generating visualisation plots.")
+def ab_run(candidate: str, n_samples: int, out: str, no_viz: bool) -> None:
+    """Run an A/B evaluation comparing the baseline against a candidate generator."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+    from generators import baseline as _base
+    from generators import deterministic as _det
+    from generators import stochastic as _stoch
+    from eval.ab_framework import run_ab_eval, save_json_report, save_markdown_report
+    from eval.viz import plot_summary
+
+    out_dir = Path(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if candidate == "deterministic":
+        cand_fn = _det.generate
+        label = "deterministic"
+    elif candidate == "stochastic_well_tuned":
+        cand_fn = lambda **kw: _stoch.generate(mode="well_tuned", **kw)
+        label = "stochastic_well_tuned"
+    else:
+        cand_fn = lambda **kw: _stoch.generate(mode="miscalibrated", **kw)
+        label = "stochastic_miscalibrated"
+
+    print(f"Running A/B eval: baseline vs {label} (N={n_samples}) …")
+    summary = run_ab_eval(
+        baseline_fn=_base.generate,
+        candidate_fn=cand_fn,
+        label=label,
+        n=n_samples,
+    )
+
+    json_path = save_json_report(summary, out_dir)
+    md_path = save_markdown_report(summary, out_dir)
+    print(f"  JSON  → {json_path}")
+    print(f"  MD    → {md_path}")
+    print(f"\n  Verdict: {summary['verdict']}  "
+          f"({summary['n_significant']}/{summary['n_tests']} tests significant)")
+
+    if not no_viz:
+        import numpy as np
+        rng_base = np.random.default_rng(0)
+        rng_cand = np.random.default_rng(1)
+        import importlib
+        base_df = _base.generate(n=n_samples, rng=rng_base, run_id="baseline")
+        cand_df = cand_fn(n=n_samples, rng=rng_cand, run_id=label)
+        png_path = plot_summary(base_df, cand_df, label, out_dir)
+        print(f"  Plot  → {png_path}")
+
+
 if __name__ == "__main__":
     main()

@@ -19,4 +19,5 @@ pytest==9.0.3
 python-dateutil==2.9.0.post0
 PyYAML==6.0.3
 scipy==1.17.1
+seaborn==0.13.2
 six==1.17.0

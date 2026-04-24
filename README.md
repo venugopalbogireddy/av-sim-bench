@@ -1,6 +1,6 @@
 # sim-log-evaluator
 
-A log-replay evaluation pipeline for simulated autonomous-driving data.  
+A log-replay evaluation pipeline for simulated autonomous-driving data.
 Ingests Parquet driving logs, computes 5 behavioural metrics, and emits a
 dashboard image + JSON report — answering the core question every AV
 simulation team asks: *"Did the simulator do the right thing?"*
@@ -14,8 +14,7 @@ simulator can be trusted, you need a repeatable, automated way to grade its
 output against a known-good baseline. This project provides that harness:
 
 - **Input**: columnar Parquet logs from any number of simulation runs
-- **Processing**: 5 metric functions, each returning a structured
-  `MetricResult(name, value, passed, details)`
+- **Processing**: 5 pure metric functions, each returning a structured `MetricResult(name, value, passed, details)`
 - **Output**: `metrics.json` + a 4-panel dashboard PNG
 
 ---
@@ -30,9 +29,9 @@ src/evaluator/
   cli.py     → Click CLI wiring everything together
 
 data/
-  golden_YYYY_MM_DD.parquet     ← reference (well-behaved)
-  regression_YYYY_MM_DD.parquet ← red-light runner + stop-sign roller
-  noisy_YYYY_MM_DD.parquet      ← speed-jitter variant
+  golden_YYYY_MM_DD.parquet      ← reference run (well-behaved agents)
+  regression_YYYY_MM_DD.parquet  ← red-light runner + stop-sign roller
+  noisy_YYYY_MM_DD.parquet       ← speed-jitter variant, otherwise compliant
 
 outputs/
   metrics.json
@@ -49,26 +48,45 @@ outputs/
 
 ---
 
+## Scenarios
+
+| Scenario | Behaviour | Expected outcome |
+|----------|-----------|-----------------|
+| `golden` | Full stop at stop signs, obeys red lights, no collisions, nominal cruise speed | Passes all 5 metrics |
+| `regression` | `agent_00` runs red light, `agent_01` rolls stop sign | Fails stop, red-light, collision metrics |
+| `noisy` | Compliant at all signs and lights, cruise speed has higher variance (σ=1.2 vs σ=0.05) | Passes safety metrics, flagged by KS test |
+
+---
+
 ## Metrics
 
 | # | Name | Logic | Pass criterion |
 |---|------|-------|----------------|
-| 1 | `stop_sign_compliance` | Fraction of agents that held speed == 0 m/s for ≥ 10 consecutive frames (~1 second) inside the stop zone | 1.0 — all agents must fully stop |
-| 2 | `red_light_violation_rate` | Fraction of agents that moved (speed > 0 m/s) inside the intersection while light = RED | 0.0 — zero violations |
-| 3 | `collision_proxy` | Count of rows where `collision_flag == True` | 0 — no collisions |
-| 4 | `route_completion` | Fraction of agents whose max y ≥ goal waypoint | 1.0 — all agents finish |
-| 5 | `speed_ks_test` | Two-sample KS p-value comparing cruise speeds vs baseline (excludes stop zones + red-light rows) | p ≥ 0.05 — no distribution drift |
+| 1 | `stop_sign_compliance` | Fraction of agents that held speed = 0 m/s for ≥ 10 consecutive frames (1 second) inside the stop zone | 1.0 — all agents must fully stop |
+| 2 | `red_light_violation_rate` | Fraction of agents that moved (speed > 0 m/s) inside the intersection while light = RED; uses `in_intersection` schema flag | 0.0 — zero violations |
+| 3 | `collision_proxy` | Count of log rows where `collision_flag == True` | 0 — no collision rows |
+| 4 | `route_completion` | Fraction of agents whose maximum recorded y ≥ goal waypoint (50.0 m) | 1.0 — all agents reach the goal |
+| 5 | `speed_ks_test` | Two-sample KS test p-value comparing cruise speeds vs baseline; cruise = rows outside stop zones and red-light states | p ≥ 0.05 — no distribution drift detected |
 
-**Key design decisions:**
-- Stop compliance requires a *sustained* stop (dwell frames), not a momentary speed dip — matching the real-world legal standard
-- Red-light detection uses the `in_intersection` schema flag, not hardcoded position bounds — keeping metrics map-agnostic
-- KS test filters to cruise-only speeds to avoid confounding deliberate slowdowns with distribution drift
+### Design decisions
+
+**Stop compliance — sustained stop, not a speed dip.**
+An agent that briefly touches 0 m/s then accelerates is not compliant. The metric requires 10 consecutive frames (1 second) at 0 m/s, matching the real-world legal standard for a complete stop.
+
+**Red-light detection — schema flag, not position bounds.**
+Detection uses the `in_intersection` boolean field written by the generator rather than a hardcoded y-coordinate range. This keeps the metric map-agnostic — if the scenario geometry changes, only `schema.py` needs updating, not the metric logic.
+
+**KS test — cruise speeds only.**
+Stop zones and red-light rows are excluded before running the KS test. Including them would confound deliberate slowdowns with genuine distribution drift in free-flow behaviour.
+
+**Each metric is a pure function.**
+Every metric takes a DataFrame and returns a `MetricResult`. No shared state, no side effects — easy to unit-test, parallelise, and version independently.
 
 ---
 
 ## Results
 
-### 3-Run Comparison
+### 3-run comparison
 
 | Metric | golden | noisy | regression |
 |--------|--------|-------|------------|
@@ -82,26 +100,23 @@ outputs/
 
 ![dashboard](outputs/dashboard.png)
 
-Key observations:
-- **regression** correctly fails 3 safety-critical metrics (stop, red-light, collision)
-- **noisy** passes all violation metrics but is flagged by the KS test — its speed
-  distribution is statistically distinguishable from the baseline
-- **golden** passes all 5 metrics when used as its own baseline
+- **regression** fails 3 safety-critical metrics — stop sign, red light, and collision
+- **noisy** passes all safety metrics but is correctly flagged by the KS test; its cruise speed distribution is statistically distinguishable from the baseline even though no rules were broken
+- **golden** passes all 5 metrics when evaluated against itself as baseline
 
 ---
 
 ## How to run
 
 ```bash
-# 1. Create + activate venv
-python3 -m venv .venv && source .venv/bin/activate
+# 1. Install dependencies
 pip install -r requirements.txt
 
 # 2. Generate synthetic logs
-python -m evaluator.cli generate --out data/
+PYTHONPATH=src python -m evaluator.cli generate --out data/
 
-# 3. Evaluate
-python -m evaluator.cli run \
+# 3. Evaluate all logs against the golden baseline
+PYTHONPATH=src python -m evaluator.cli run \
   --logs data/ \
   --baseline data/golden_$(date +%Y_%m_%d).parquet \
   --out outputs/
@@ -116,12 +131,11 @@ pytest tests/ -v
 
 | Goal | Where to change |
 |------|----------------|
-| Add a new metric | Add a function to `metrics.py`, register it in `compute_all()` |
-| Change scenario behaviour | Edit scenario functions in `log_gen.py` |
-| Change map geometry | Update constants in `schema.py` — propagates to generator and metrics |
-| Real logs | Replace `generate` step with your Parquet export; schema must match `schema.py` |
-| DuckDB at scale | `import duckdb; duckdb.query("SELECT * FROM parquet_scan('data/*.parquet')")` |
-| CI | Add `pytest tests/` to GitHub Actions; no external services needed |
+| Add a new metric | Add a pure function to `metrics.py`, register it in `compute_all()` |
+| Change scenario behaviour | Edit the relevant scenario function in `log_gen.py` |
+| Change map geometry | Update `STOP_ZONE_Y` / `INTERSECTION_Y` in `schema.py` — propagates to both generator and metrics |
+| Use real logs | Replace the `generate` step with your own Parquet export; schema must match `schema.py` |
+| CI | Add `PYTHONPATH=src pytest tests/` to your GitHub Actions workflow; no external services needed |
 
 ---
 

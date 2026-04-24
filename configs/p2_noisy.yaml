@@ -1,0 +1,45 @@
+scenario: noisy
+
+city:
+  rows: 5
+  cols: 5
+  traffic_light_nodes:
+    - [0, 0]
+    - [2, 2]
+    - [4, 4]
+  stop_sign_nodes:
+    - [1, 1]
+    - [3, 3]
+  blocked_edges: []
+  one_way_edges: []
+
+max_ticks: 300
+
+agents:
+  - agent_id: agent_00
+    start: [0, 0]
+    goal: [4, 4]
+    ignore_red_lights: false
+    roll_stop_signs: false
+    speed_noise_std: 1.5    # high speed variance — triggers KS drift vs golden
+
+  - agent_id: agent_01
+    start: [0, 0]
+    goal: [4, 4]
+    ignore_red_lights: false
+    roll_stop_signs: false
+    speed_noise_std: 1.5
+
+  - agent_id: agent_02
+    start: [0, 0]
+    goal: [4, 4]
+    ignore_red_lights: false
+    roll_stop_signs: false
+    speed_noise_std: 1.5
+
+  - agent_id: agent_03
+    start: [0, 0]
+    goal: [4, 4]
+    ignore_red_lights: false
+    roll_stop_signs: false
+    speed_noise_std: 1.5
