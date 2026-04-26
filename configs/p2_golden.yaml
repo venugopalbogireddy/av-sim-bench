@@ -37,11 +37,11 @@ agents:
     goal: [4, 4]
     ignore_red_lights: false
     roll_stop_signs: false
-    speed_noise_std: 0.05
+    speed_noise_std: 0.15
 
   - agent_id: agent_03
     start: [0, 0]
     goal: [4, 4]
     ignore_red_lights: false
     roll_stop_signs: false
-    speed_noise_std: 0.05
+    speed_noise_std: 0.30
