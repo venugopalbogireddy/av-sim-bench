@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AV Sim Bench — Interactive Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #1a1d27;
+    --border: #2a2d3a;
+    --accent: #4f8ef7;
+    --accent2: #a78bfa;
+    --pass: #2ecc71;
+    --fail: #e74c3c;
+    --warn: #f39c12;
+    --text: #e0e0e0;
+    --muted: #7a7f99;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Header ── */
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  header h1 { font-size: 16px; font-weight: 600; color: var(--accent); letter-spacing: 0.3px; }
+  header span { font-size: 12px; color: var(--muted); }
+  .tabs { display: flex; gap: 4px; margin-left: auto; }
+  .tab-btn { padding: 6px 18px; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+  .tab-btn:hover { color: var(--text); border-color: var(--accent); }
+  .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── Main layout ── */
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .controls { width: 260px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .viz-area { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ── Controls ── */
+  .ctrl-group { display: flex; flex-direction: column; gap: 8px; }
+  .ctrl-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  label { font-size: 13px; color: var(--text); display: flex; flex-direction: column; gap: 4px; }
+  .slider-row { display: flex; align-items: center; gap: 8px; }
+  input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+  .val-badge { min-width: 40px; text-align: right; font-size: 12px; color: var(--accent); font-weight: 600; }
+  select { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; cursor: pointer; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .checkbox-row input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+  .run-btn { width: 100%; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; margin-top: 4px; }
+  .run-btn:hover { opacity: 0.85; }
+  .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .run-btn.running { background: var(--warn); }
+
+  /* ── Metric cards ── */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .metric-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .metric-card.pass { border-left: 3px solid var(--pass); }
+  .metric-card.fail { border-left: 3px solid var(--fail); }
+  .metric-name { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+  .metric-value { font-size: 22px; font-weight: 700; }
+  .metric-card.pass .metric-value { color: var(--pass); }
+  .metric-card.fail .metric-value { color: var(--fail); }
+  .metric-status { font-size: 11px; margin-top: 4px; }
+  .metric-card.pass .metric-status { color: var(--pass); }
+  .metric-card.fail .metric-status { color: var(--fail); }
+
+  /* ── Chart containers ── */
+  .chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .chart-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 10px; }
+  .plot-container { width: 100%; }
+
+  /* ── P2 grid ── */
+  .p2-layout { display: flex; gap: 14px; }
+  .p2-grid-wrap { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .p2-controls-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .anim-btn { padding: 5px 14px; border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+  .anim-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .anim-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #p2-tick-info { font-size: 12px; color: var(--muted); }
+  #p2-svg { width: 100%; border-radius: 6px; }
+  .p2-side { width: 220px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── P3 table ── */
+  .test-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .test-table th { text-align: left; padding: 8px 10px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
+  .test-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  .test-table tr:last-child td { border-bottom: none; }
+  .sig-yes { color: var(--fail); font-weight: 700; }
+  .sig-no { color: var(--pass); }
+  .verdict-box { display: inline-block; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 14px; }
+  .verdict-DIVERGENT { background: rgba(231,76,60,0.15); color: var(--fail); border: 1px solid var(--fail); }
+  .verdict-EQUIVALENT { background: rgba(46,204,113,0.15); color: var(--pass); border: 1px solid var(--pass); }
+
+  /* ── LLM panel ── */
+  .llm-panel { background: var(--panel); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .llm-header { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; user-select: none; }
+  .llm-header span { font-size: 12px; font-weight: 600; color: var(--accent2); }
+  .llm-toggle { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .llm-body { display: none; padding: 0 16px 12px; }
+  .llm-body.open { display: block; }
+  .llm-input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  #llm-input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 13px; }
+  #llm-input:focus { outline: none; border-color: var(--accent2); }
+  .llm-send-btn { padding: 7px 16px; background: var(--accent2); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .llm-send-btn:hover { opacity: 0.85; }
+  #llm-model-select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 8px; font-size: 12px; }
+  .llm-response { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; min-height: 48px; max-height: 120px; overflow-y: auto; font-size: 13px; line-height: 1.6; color: var(--text); white-space: pre-wrap; }
+  .llm-response:empty::before { content: 'Ask anything about the current simulation results…'; color: var(--muted); }
+
+  /* ── Misc ── */
+  .tab-panel { display: none; flex-direction: column; height: 100%; }
+  .tab-panel.active { display: flex; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  .placeholder { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <h1>AV Sim Bench</h1>
+  <span>Interactive Dashboard</span>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('p1')">P1 · Log Replay</button>
+    <button class="tab-btn" onclick="switchTab('p2')">P2 · Grid Sim</button>
+    <button class="tab-btn" onclick="switchTab('p3')">P3 · A/B Eval</button>
+  </div>
+</header>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- ════════════════════ P1 ════════════════════ -->
+  <div id="tab-p1" class="tab-panel active" style="display:flex;flex-direction:row;width:100%;">
+    <div class="controls">
+      <div class="ctrl-label">P1 — Log Replay</div>
+
+      <div class="ctrl-group">
+        <label>Scenario
+          <select id="p1-scenario">
+            <option value="golden">Golden (compliant)</option>
+            <option value="regression">Regression (bad actors)</option>
+            <option value="noisy">Noisy (speed jitter)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="ctrl-group">
+        <label>Agents
+          <div class="slider-row">
+            <input type="range" id="p1-agents" min="1" max="8" value="4" oninput="upd('p1-agents-val',this.value)">
+            <span class="val-badge" id="p1-agents-val">4</span>
+          </div>
+        </label>
+        <label>Cruise Speed (m/s)
+          <div class="slider-row">
+            <input type="range" id="p1-speed" min="2" max="15" step="0.5" value="8" oninput="upd('p1-speed-val',this.value)">
+            <span class="val-badge" id="p1-speed-val">8</span>
+          </div>
+        </label>
+        <label>Speed Noise σ
+          <div class="slider-row">
+            <input type="range" id="p1-noise" min="0" max="3" step="0.05" value="0.05" oninput="upd('p1-noise-val',this.value)">
+            <span class="val-badge" id="p1-noise-val">0.05</span>
+          </div>
+        </label>
+        <label>Stop Dwell Frames
+          <div class="slider-row">
+            <input type="range" id="p1-dwell" min="1" max="30" value="10" oninput="upd('p1-dwell-val',this.value)">
+            <span class="val-badge" id="p1-dwell-val">10</span>
+          </div>
+        </label>
+      </div>
+
+      <button class="run-btn" id="p1-run-btn" onclick="runP1()">Run Simulation</button>
+    </div>
+
+    <div class="viz-area" id="p1-viz">
+      <div class="placeholder">Adjust parameters and click Run Simulation.</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ P2 ════════════════════ -->
+  <div id="tab-p2" class="tab-panel" style="display:none;flex-direction:row;width:100%;">
+    <div class="controls">
+      <div class="ctrl-label">P2 — Grid Sim</div>
+
+      <div class="ctrl-group">
+        <label>Grid Rows
+          <div class="slider-row">
+            <input type="range" id="p2-rows" min="3" max="10" value="5" oninput="upd('p2-rows-val',this.value)">
+            <span class="val-badge" id="p2-rows-val">5</span>
+          </div>
+        </label>
+        <label>Grid Cols
+          <div class="slider-row">
+            <input type="range" id="p2-cols" min="3" max="10" value="5" oninput="upd('p2-cols-val',this.value)">
+            <span class="val-badge" id="p2-cols-val">5</span>
+          </div>
+        </label>
+        <label>Max Ticks
+          <div class="slider-row">
+            <input type="range" id="p2-ticks" min="50" max="400" step="10" value="200" oninput="upd('p2-ticks-val',this.value)">
+            <span class="val-badge" id="p2-ticks-val">200</span>
+          </div>
+        </label>
+        <label>Speed Noise σ
+          <div class="slider-row">
+            <input type="range" id="p2-noise" min="0" max="2" step="0.05" value="0.05" oninput="upd('p2-noise-val',this.value)">
+            <span class="val-badge" id="p2-noise-val">0.05</span>
+          </div>
+        </label>
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-label">Agent Flags</div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="p2-ignore-red">
+          <span>Ignore Red Lights</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="p2-roll-stop">
+          <span>Roll Stop Signs</span>
+        </label>
+      </div>
+
+      <button class="run-btn" id="p2-run-btn" onclick="runP2()">Run Simulation</button>
+    </div>
+
+    <div class="viz-area" id="p2-viz">
+      <div class="placeholder">Adjust parameters and click Run Simulation.</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════ P3 ════════════════════ -->
+  <div id="tab-p3" class="tab-panel" style="display:none;flex-direction:row;width:100%;">
+    <div class="controls">
+      <div class="ctrl-label">P3 — A/B Eval</div>
+
+      <div class="ctrl-group">
+        <label>Candidate Generator
+          <select id="p3-candidate">
+            <option value="deterministic">Deterministic</option>
+            <option value="stochastic_well_tuned">Stochastic (well-tuned)</option>
+            <option value="stochastic_miscalibrated">Stochastic (miscalibrated)</option>
+          </select>
+        </label>
+        <label>Sample Size (n)
+          <div class="slider-row">
+            <input type="range" id="p3-n" min="100" max="5000" step="100" value="1000" oninput="upd('p3-n-val',this.value)">
+            <span class="val-badge" id="p3-n-val">1000</span>
+          </div>
+        </label>
+        <label>Alpha (α)
+          <select id="p3-alpha">
+            <option value="0.01">0.01</option>
+            <option value="0.05" selected>0.05</option>
+            <option value="0.1">0.1</option>
+            <option value="0.2">0.2</option>
+          </select>
+        </label>
+      </div>
+
+      <button class="run-btn" id="p3-run-btn" onclick="runP3()">Run A/B Eval</button>
+    </div>
+
+    <div class="viz-area" id="p3-viz">
+      <div class="placeholder">Select a candidate generator and click Run A/B Eval.</div>
+    </div>
+  </div>
+
+</div><!-- /.main -->
+
+<!-- ── LLM Panel ── -->
+<div class="llm-panel">
+  <div class="llm-header" onclick="toggleLLM()">
+    <span>🤖 Co-pilot (llama3.2)</span>
+    <div style="font-size:11px;color:var(--muted);margin-left:8px;" id="llm-status">Ask about the current simulation results</div>
+    <div class="llm-toggle" id="llm-toggle-icon">▲</div>
+  </div>
+  <div class="llm-body open" id="llm-body">
+    <div class="llm-input-row">
+      <input type="text" id="llm-input" placeholder="e.g. Why did agent_00 fail? What happens if I increase cruise speed?" onkeydown="if(event.key==='Enter')askLLM()">
+      <select id="llm-model-select">
+        <option value="llama3.2">llama3.2</option>
+        <option value="gemma3">gemma3</option>
+      </select>
+      <button class="llm-send-btn" onclick="askLLM()">Ask</button>
+    </div>
+    <div class="llm-response" id="llm-response"></div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const state = { p1: null, p2: null, p3: null };
+let p2Anim = { frames: [], tick: 0, playing: false, timer: null, speed: 4 };
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+function upd(id, val) { document.getElementById(id).textContent = val; }
+
+function switchTab(tab) {
+  ['p1','p2','p3'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === tab ? 'flex' : 'none';
+    document.querySelectorAll('.tab-btn')[['p1','p2','p3'].indexOf(t)].classList.toggle('active', t === tab);
+  });
+}
+
+function toggleLLM() {
+  const body = document.getElementById('llm-body');
+  const icon = document.getElementById('llm-toggle-icon');
+  body.classList.toggle('open');
+  icon.textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+
+function setRunning(btnId, running) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = running;
+  btn.classList.toggle('running', running);
+  btn.innerHTML = running ? '<span class="spinner"></span>Running…' : btn.dataset.label || 'Run Simulation';
+  if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+}
+
+function renderMetrics(metrics, container) {
+  const html = metrics.map(m => {
+    const cls = m.passed ? 'pass' : 'fail';
+    const icon = m.passed ? '✓' : '✗';
+    const valStr = typeof m.value === 'number'
+      ? (m.value % 1 !== 0 ? m.value.toFixed(4) : m.value)
+      : m.value;
+    return `<div class="metric-card ${cls}">
+      <div class="metric-name">${m.name.replace(/_/g,' ')}</div>
+      <div class="metric-value">${valStr}</div>
+      <div class="metric-status">${icon} ${m.passed ? 'PASS' : 'FAIL'}</div>
+    </div>`;
+  }).join('');
+  container.innerHTML = `<div class="metrics-grid">${html}</div>`;
+}
+
+const PLOTLY_LAYOUT_BASE = {
+  paper_bgcolor: 'transparent',
+  plot_bgcolor: '#0f1117',
+  font: { color: '#e0e0e0', size: 11 },
+  margin: { t: 10, b: 40, l: 50, r: 10 },
+  xaxis: { gridcolor: '#2a2d3a', zerolinecolor: '#2a2d3a' },
+  yaxis: { gridcolor: '#2a2d3a', zerolinecolor: '#2a2d3a' },
+  legend: { bgcolor: 'transparent', font: { size: 10 } },
+};
+const COLORS = ['#4f8ef7','#a78bfa','#2ecc71','#f39c12','#e74c3c','#1abc9c','#e67e22','#9b59b6'];
+
+// ─── P1 ───────────────────────────────────────────────────────────────────────
+async function runP1() {
+  setRunning('p1-run-btn', true);
+  const params = {
+    scenario: document.getElementById('p1-scenario').value,
+    num_agents: +document.getElementById('p1-agents').value,
+    cruise_speed: +document.getElementById('p1-speed').value,
+    speed_noise_std: +document.getElementById('p1-noise').value,
+    stop_dwell_frames: +document.getElementById('p1-dwell').value,
+  };
+  try {
+    const res = await fetch('/api/p1/run', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(params) });
+    const data = await res.json();
+    state.p1 = data;
+    renderP1(data);
+  } catch(e) {
+    document.getElementById('p1-viz').innerHTML = `<div class="placeholder" style="color:var(--fail)">Error: ${e.message}</div>`;
+  } finally {
+    setRunning('p1-run-btn', false);
+  }
+}
+
+function renderP1(data) {
+  const viz = document.getElementById('p1-viz');
+  viz.innerHTML = '';
+
+  // metrics
+  const mDiv = document.createElement('div');
+  renderMetrics(data.metrics, mDiv);
+  viz.appendChild(mDiv);
+
+  // speed timeline
+  const speedBox = document.createElement('div');
+  speedBox.className = 'chart-box';
+  speedBox.innerHTML = '<div class="chart-title">Speed Over Time (m/s per agent)</div><div id="p1-speed-chart" class="plot-container"></div>';
+  viz.appendChild(speedBox);
+
+  const agents = Object.keys(data.agents);
+  const speedTraces = agents.map((aid, i) => ({
+    x: data.agents[aid].timestamps,
+    y: data.agents[aid].speeds,
+    name: aid,
+    type: 'scatter', mode: 'lines',
+    line: { color: COLORS[i % COLORS.length], width: 1.5 },
+  }));
+
+  // zone bands
+  const zones = data.zones;
+  const nTs = data.agents[agents[0]].timestamps;
+  const maxTs = nTs[nTs.length - 1];
+  const layout = {
+    ...PLOTLY_LAYOUT_BASE,
+    height: 200,
+    shapes: [
+      { type:'rect', xref:'x', yref:'paper', x0:0, x1:maxTs, y0:0, y1:1, opacity:0.06,
+        fillcolor:'#f39c12', line:{width:0},
+        // highlight stop zone timestamps (approx)
+      },
+    ],
+    xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title: 'Time (ms)' },
+    yaxis: { ...PLOTLY_LAYOUT_BASE.yaxis, title: 'm/s' },
+  };
+  Plotly.newPlot('p1-speed-chart', speedTraces, layout, {responsive:true, displayModeBar:false});
+
+  // Y position chart (shows spatial progress)
+  const yBox = document.createElement('div');
+  yBox.className = 'chart-box';
+  yBox.innerHTML = '<div class="chart-title">Agent Y-Position (spatial progress)</div><div id="p1-y-chart" class="plot-container"></div>';
+  viz.appendChild(yBox);
+
+  const yTraces = agents.map((aid, i) => ({
+    x: data.agents[aid].timestamps,
+    y: data.agents[aid].y,
+    name: aid,
+    type: 'scatter', mode: 'lines',
+    line: { color: COLORS[i % COLORS.length], width: 1.5 },
+  }));
+
+  const stopY0 = zones.stop[0], stopY1 = zones.stop[1];
+  const intY0 = zones.intersection[0], intY1 = zones.intersection[1];
+
+  const yLayout = {
+    ...PLOTLY_LAYOUT_BASE,
+    height: 200,
+    shapes: [
+      { type:'rect', xref:'paper', yref:'y', x0:0, x1:1, y0:stopY0, y1:stopY1, fillcolor:'rgba(243,156,18,0.12)', line:{width:0} },
+      { type:'rect', xref:'paper', yref:'y', x0:0, x1:1, y0:intY0, y1:intY1, fillcolor:'rgba(231,76,60,0.12)', line:{width:0} },
+    ],
+    annotations: [
+      { xref:'paper', yref:'y', x:0.01, y:(stopY0+stopY1)/2, text:'STOP ZONE', showarrow:false, font:{color:'#f39c12',size:9} },
+      { xref:'paper', yref:'y', x:0.01, y:(intY0+intY1)/2, text:'INTERSECTION', showarrow:false, font:{color:'#e74c3c',size:9} },
+    ],
+    xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title: 'Time (ms)' },
+    yaxis: { ...PLOTLY_LAYOUT_BASE.yaxis, title: 'Y position' },
+  };
+  Plotly.newPlot('p1-y-chart', yTraces, yLayout, {responsive:true, displayModeBar:false});
+}
+
+// ─── P2 ───────────────────────────────────────────────────────────────────────
+async function runP2() {
+  setRunning('p2-run-btn', true);
+  const params = {
+    rows: +document.getElementById('p2-rows').value,
+    cols: +document.getElementById('p2-cols').value,
+    max_ticks: +document.getElementById('p2-ticks').value,
+    speed_noise_std: +document.getElementById('p2-noise').value,
+    ignore_red_lights: document.getElementById('p2-ignore-red').checked,
+    roll_stop_signs: document.getElementById('p2-roll-stop').checked,
+  };
+  try {
+    const res = await fetch('/api/p2/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(params) });
+    const data = await res.json();
+    state.p2 = data;
+    renderP2(data);
+  } catch(e) {
+    document.getElementById('p2-viz').innerHTML = `<div class="placeholder" style="color:var(--fail)">Error: ${e.message}</div>`;
+  } finally {
+    setRunning('p2-run-btn', false);
+  }
+}
+
+function renderP2(data) {
+  const viz = document.getElementById('p2-viz');
+  viz.innerHTML = '';
+
+  // layout wrapper
+  const layout = document.createElement('div');
+  layout.className = 'p2-layout';
+
+  // grid side
+  const gridWrap = document.createElement('div');
+  gridWrap.className = 'p2-grid-wrap';
+  gridWrap.innerHTML = `
+    <div class="p2-controls-bar">
+      <button class="anim-btn active" id="p2-play-btn" onclick="p2Play()">▶ Play</button>
+      <button class="anim-btn" onclick="p2Pause()">⏸ Pause</button>
+      <button class="anim-btn" onclick="p2Step()">⏭ Step</button>
+      <button class="anim-btn" onclick="p2Reset()">⏮ Reset</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);">
+        Speed: <input type="range" min="1" max="20" value="4" style="width:70px;" oninput="p2SetSpeed(+this.value)">
+      </label>
+      <span id="p2-tick-info">Tick 0</span>
+    </div>
+    <svg id="p2-svg"></svg>`;
+
+  // metrics side
+  const side = document.createElement('div');
+  side.className = 'p2-side';
+  renderMetrics(data.metrics, side);
+
+  layout.appendChild(gridWrap);
+  layout.appendChild(side);
+  viz.appendChild(layout);
+
+  // init animation
+  p2Anim.frames = data.frames;
+  p2Anim.grid = data.grid;
+  p2Anim.tick = 0;
+  p2Anim.playing = false;
+  if (p2Anim.timer) clearInterval(p2Anim.timer);
+
+  drawP2Frame(0);
+}
+
+function getLightColor(x, y, tick) {
+  const cycle = [...Array(20).fill('GREEN'), ...Array(5).fill('YELLOW'), ...Array(25).fill('RED')];
+  const offset = (x * 5 + y * 3) % 50;
+  const phase = cycle[(tick + offset) % 50];
+  return phase === 'GREEN' ? '#2ecc71' : phase === 'YELLOW' ? '#f39c12' : '#e74c3c';
+}
+
+function drawP2Frame(frameIdx) {
+  if (!p2Anim.frames || !p2Anim.frames.length) return;
+  const frame = p2Anim.frames[Math.min(frameIdx, p2Anim.frames.length - 1)];
+  const grid = p2Anim.grid;
+  const svg = document.getElementById('p2-svg');
+  if (!svg) return;
+
+  const CELL = 54, PAD = 20;
+  const W = grid.cols * CELL + PAD * 2;
+  const H = grid.rows * CELL + PAD * 2;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  let s = `<rect width="${W}" height="${H}" fill="#0f1117" rx="6"/>`;
+
+  // Draw edges (grid lines)
+  for (let r = 0; r < grid.rows; r++) {
+    for (let c = 0; c < grid.cols; c++) {
+      const cx = PAD + c * CELL + CELL/2;
+      const cy = PAD + r * CELL + CELL/2;
+      if (c < grid.cols - 1) s += `<line x1="${cx}" y1="${cy}" x2="${cx + CELL}" y2="${cy}" stroke="#2a2d3a" stroke-width="2"/>`;
+      if (r < grid.rows - 1) s += `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy + CELL}" stroke="#2a2d3a" stroke-width="2"/>`;
+    }
+  }
+
+  // Draw nodes
+  for (let r = 0; r < grid.rows; r++) {
+    for (let c = 0; c < grid.cols; c++) {
+      const cx = PAD + c * CELL + CELL/2;
+      const cy = PAD + r * CELL + CELL/2;
+      const isTL = grid.traffic_lights.some(n => n[0] === r && n[1] === c);
+      const isSS = grid.stop_signs.some(n => n[0] === r && n[1] === c);
+      const isStart = r === 0 && c === 0;
+      const isGoal = r === grid.rows-1 && c === grid.cols-1;
+
+      if (isStart) {
+        s += `<circle cx="${cx}" cy="${cy}" r="10" fill="#4f8ef7" opacity="0.8"/>`;
+        s += `<text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="10" fill="white" font-weight="bold">S</text>`;
+      } else if (isGoal) {
+        s += `<circle cx="${cx}" cy="${cy}" r="10" fill="#2ecc71" opacity="0.8"/>`;
+        s += `<text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="10" fill="white" font-weight="bold">G</text>`;
+      } else if (isTL) {
+        const lcolor = getLightColor(c, r, frame.tick);
+        s += `<rect x="${cx-9}" y="${cy-9}" width="18" height="18" rx="3" fill="${lcolor}" opacity="0.85"/>`;
+      } else if (isSS) {
+        s += `<polygon points="${cx},${cy-10} ${cx+9},${cy+6} ${cx-9},${cy+6}" fill="#f39c12" opacity="0.85"/>`;
+        s += `<text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="8" fill="#0f1117" font-weight="bold">STOP</text>`;
+      } else {
+        s += `<circle cx="${cx}" cy="${cy}" r="5" fill="#2a2d3a"/>`;
+      }
+    }
+  }
+
+  // Draw agents
+  const agentColors = ['#a78bfa','#4f8ef7'];
+  const agentIds = Object.keys(frame.agents);
+  agentIds.forEach((aid, i) => {
+    const ag = frame.agents[aid];
+    const cx = PAD + ag.x * CELL + CELL/2;
+    const cy = PAD + ag.y * CELL + CELL/2;
+    const color = agentColors[i % agentColors.length];
+    s += `<circle cx="${cx}" cy="${cy}" r="12" fill="${color}" opacity="0.9" stroke="white" stroke-width="1.5"/>`;
+    s += `<text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="9" fill="white" font-weight="bold">${aid.slice(-2)}</text>`;
+    // speed label
+    s += `<text x="${cx}" y="${cy-16}" text-anchor="middle" font-size="9" fill="${color}">${ag.speed}m/s</text>`;
+  });
+
+  svg.innerHTML = s;
+  document.getElementById('p2-tick-info').textContent = `Tick ${frame.tick} / ${p2Anim.frames.length - 1}`;
+}
+
+function p2Play() {
+  if (p2Anim.playing) return;
+  p2Anim.playing = true;
+  p2Anim.timer = setInterval(() => {
+    if (p2Anim.tick >= p2Anim.frames.length - 1) {
+      p2Pause();
+      return;
+    }
+    p2Anim.tick++;
+    drawP2Frame(p2Anim.tick);
+  }, Math.round(1000 / p2Anim.speed));
+}
+
+function p2Pause() {
+  p2Anim.playing = false;
+  if (p2Anim.timer) { clearInterval(p2Anim.timer); p2Anim.timer = null; }
+}
+
+function p2Step() {
+  p2Pause();
+  p2Anim.tick = Math.min(p2Anim.tick + 1, (p2Anim.frames || []).length - 1);
+  drawP2Frame(p2Anim.tick);
+}
+
+function p2Reset() {
+  p2Pause();
+  p2Anim.tick = 0;
+  drawP2Frame(0);
+}
+
+function p2SetSpeed(v) {
+  p2Anim.speed = v;
+  if (p2Anim.playing) { p2Pause(); p2Play(); }
+}
+
+// ─── P3 ───────────────────────────────────────────────────────────────────────
+async function runP3() {
+  setRunning('p3-run-btn', true);
+  document.getElementById('p3-run-btn').dataset.label = 'Run A/B Eval';
+  const params = {
+    candidate: document.getElementById('p3-candidate').value,
+    n: +document.getElementById('p3-n').value,
+    alpha: +document.getElementById('p3-alpha').value,
+  };
+  try {
+    const res = await fetch('/api/p3/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(params) });
+    const data = await res.json();
+    state.p3 = data;
+    renderP3(data);
+  } catch(e) {
+    document.getElementById('p3-viz').innerHTML = `<div class="placeholder" style="color:var(--fail)">Error: ${e.message}</div>`;
+  } finally {
+    setRunning('p3-run-btn', false);
+  }
+}
+
+function renderP3(data) {
+  const viz = document.getElementById('p3-viz');
+  viz.innerHTML = '';
+
+  const s = data.summary;
+
+  // verdict
+  const vDiv = document.createElement('div');
+  vDiv.style.cssText = 'display:flex;align-items:center;gap:14px;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;';
+  vDiv.innerHTML = `
+    <span class="verdict-box verdict-${s.verdict}">${s.verdict}</span>
+    <span style="font-size:13px;color:var(--muted)">${s.n_significant} of ${s.n_tests} tests significant · n=${s.n_samples} · α=${s.alpha}</span>`;
+  viz.appendChild(vDiv);
+
+  // distribution charts
+  const cols = ['speed_mps','gap_s','lane_changes'];
+  const chartRow = document.createElement('div');
+  chartRow.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;';
+
+  cols.forEach(col => {
+    const box = document.createElement('div');
+    box.className = 'chart-box';
+    box.innerHTML = `<div class="chart-title">${col.replace(/_/g,' ')}</div><div id="p3-chart-${col}" class="plot-container"></div>`;
+    chartRow.appendChild(box);
+  });
+  viz.appendChild(chartRow);
+
+  // draw after DOM insertion
+  requestAnimationFrame(() => {
+    cols.forEach(col => {
+      const dist = data.distributions[col];
+      const isCount = col === 'lane_changes';
+      const traces = [
+        { name:'Baseline', x: dist.baseline, type:'histogram', opacity:0.6, marker:{color:'#4f8ef7'}, nbinsx: isCount ? 15 : 40, histnorm:'probability' },
+        { name:'Candidate', x: dist.candidate, type:'histogram', opacity:0.6, marker:{color:'#e74c3c'}, nbinsx: isCount ? 15 : 40, histnorm:'probability' },
+      ];
+      Plotly.newPlot(`p3-chart-${col}`, traces, {
+        ...PLOTLY_LAYOUT_BASE,
+        height: 180,
+        barmode: 'overlay',
+        xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title: col },
+        yaxis: { ...PLOTLY_LAYOUT_BASE.yaxis, title: 'Prob' },
+        showlegend: col === 'speed_mps',
+      }, {responsive:true, displayModeBar:false});
+    });
+  });
+
+  // test results table
+  const tableBox = document.createElement('div');
+  tableBox.className = 'chart-box';
+  const rows = s.tests.map(t => {
+    const sigClass = t.significant ? 'sig-yes' : 'sig-no';
+    const pStr = t.p_value != null ? t.p_value.toFixed(4) : '—';
+    return `<tr>
+      <td>${t.test}</td>
+      <td>${t.metric.replace(/_/g,' ')}</td>
+      <td>${t.statistic.toFixed(4)}</td>
+      <td>${pStr}</td>
+      <td class="${sigClass}">${t.significant ? '✗ YES' : '✓ no'}</td>
+    </tr>`;
+  }).join('');
+
+  // bootstrap CI
+  const ciRows = Object.entries(s.bootstrap_ci).map(([col, ci]) =>
+    `<tr><td>${col.replace(/_/g,' ')}</td><td>${ci.wasserstein_observed.toFixed(4)}</td>
+     <td>[${ci.ci_95_lo.toFixed(4)}, ${ci.ci_95_hi.toFixed(4)}]</td></tr>`
+  ).join('');
+
+  tableBox.innerHTML = `
+    <div class="chart-title">Test Results (BH-FDR corrected)</div>
+    <table class="test-table">
+      <thead><tr><th>Test</th><th>Metric</th><th>Statistic</th><th>p-value</th><th>Significant?</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:14px;" class="chart-title">Wasserstein Bootstrap CI (95%)</div>
+    <table class="test-table">
+      <thead><tr><th>Metric</th><th>Observed</th><th>95% CI</th></tr></thead>
+      <tbody>${ciRows}</tbody>
+    </table>`;
+  viz.appendChild(tableBox);
+}
+
+// ─── LLM ──────────────────────────────────────────────────────────────────────
+async function askLLM() {
+  const input = document.getElementById('llm-input');
+  const prompt = input.value.trim();
+  if (!prompt) return;
+
+  const model = document.getElementById('llm-model-select').value;
+  const respEl = document.getElementById('llm-response');
+  respEl.textContent = '';
+  input.value = '';
+
+  // build context from active tab
+  let ctx = null;
+  const activeTab = document.querySelector('.tab-btn.active').textContent.split(' ')[0].toLowerCase();
+  if (activeTab === 'p1' && state.p1) ctx = { tab:'P1', metrics: state.p1.metrics, params: state.p1.params };
+  else if (activeTab === 'p2' && state.p2) ctx = { tab:'P2', metrics: state.p2.metrics, params: state.p2.params };
+  else if (activeTab === 'p3' && state.p3) ctx = { tab:'P3', summary: { verdict: state.p3.summary.verdict, n_significant: state.p3.summary.n_significant, n_tests: state.p3.summary.n_tests }, params: state.p3.params };
+
+  document.getElementById('llm-status').textContent = 'Thinking…';
+
+  try {
+    const res = await fetch('/api/llm/query', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt, model, context: ctx }),
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      respEl.textContent += decoder.decode(value);
+      respEl.scrollTop = respEl.scrollHeight;
+    }
+  } catch(e) {
+    respEl.textContent = `Error: ${e.message}`;
+  } finally {
+    document.getElementById('llm-status').textContent = 'Ask about the current simulation results';
+  }
+}
+
+// init
+document.querySelectorAll('.run-btn').forEach(b => b.dataset.label = b.textContent);
+</script>
+</body>
+</html>

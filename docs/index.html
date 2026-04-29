@@ -40,7 +40,54 @@
     a:hover { text-decoration: underline; }
 
     /* Hero */
-    #hero { text-align: center; padding: 120px 0 80px; }
+    #hero { padding: 80px 0 60px; }
+    .hero-inner {
+      display: flex;
+      align-items: center;
+      gap: 3rem;
+    }
+    .hero-text { flex: 1; min-width: 0; }
+    .hero-actions { margin-top: 24px; }
+    .hero-visual { flex: 0 0 420px; }
+    .hero-visual img {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(88,166,255,0.2);
+      display: block;
+    }
+    .hero-visual-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .hero-stats {
+      display: flex;
+      gap: 2.5rem;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .hero-stat { display: flex; flex-direction: column; }
+    .stat-n {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--heading);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+      letter-spacing: 0.03em;
+    }
+    @media (max-width: 900px) {
+      .hero-inner { flex-direction: column-reverse; }
+      .hero-visual { flex: none; width: 100%; max-width: 480px; margin: 0 auto; }
+      .hero-stats { justify-content: center; }
+    }
 
     .hero-tag {
       display: inline-block;
@@ -282,9 +329,6 @@
 
     .tech-line span { color: var(--accent); }
 
-    /* Loading state */
-    .loading { color: var(--text-dim); font-style: italic; font-size: 0.88rem; }
-
     /* Expandable card details */
     .expand-btn {
       background: none;
@@ -392,6 +436,79 @@
       border-top: 1px solid var(--border);
     }
 
+    /* ── P1 WOMD full-bleed band ──────────────────────── */
+    .p1-womd-band {
+      background: #0a0f1e;
+      border-top: 1px solid #1a2a4a;
+      border-bottom: 1px solid #1a2a4a;
+      padding: 2.5rem 0;
+      margin-top: 2.5rem;
+    }
+    .womd-header { text-align: center; margin-bottom: 1.8rem; }
+    .womd-badge {
+      display: inline-block;
+      background: #003366;
+      color: #66aaff;
+      border: 1px solid #224488;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      margin-bottom: 0.8rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .womd-subtitle { color: #aabbcc; max-width: 640px; margin: 0 auto; line-height: 1.6; }
+    .womd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+    @media (max-width: 768px) { .womd-grid { grid-template-columns: 1fr; } }
+    .womd-col {}
+    .womd-label {
+      font-size: 0.72rem; font-weight: 700; color: #66aaff;
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem;
+    }
+    .womd-gif { width: 100%; border-radius: 6px; border: 1px solid #1a2a4a; }
+    .womd-dashboard { width: 100%; border-radius: 6px; border: 1px solid #1a2a4a; margin-bottom: 1rem; }
+    .womd-caption { font-size: 0.8rem; color: #778899; margin-top: 0.6rem; line-height: 1.5; }
+    .dot-green { color: #44ff44; }
+    .dot-red   { color: #ff4444; }
+
+    /* Diff table */
+    .diff-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 0.8rem; }
+    .diff-table th {
+      background: #111827; color: #aabbcc; padding: 6px 10px;
+      border-bottom: 1px solid #1a2a4a; text-align: left; font-weight: 600;
+    }
+    .th-sub { font-weight: 400; font-size: 0.72rem; color: #667788; }
+    .diff-table td { padding: 5px 10px; border-bottom: 1px solid #0d1520; color: #ccddee; }
+    .diff-table tr:last-child td { border-bottom: none; }
+    .pass       { color: #44cc66; font-weight: 600; }
+    .warn       { color: #ffaa22; font-weight: 600; }
+    .delta-neg  { color: #ff6644; font-weight: 600; }
+    .delta-flat { color: #446688; }
+
+    /* Callout */
+    .womd-callout {
+      margin-top: 1.8rem; padding: 1rem 1.4rem;
+      background: #0d1a2e; border-left: 3px solid #0066cc;
+      border-radius: 0 6px 6px 0; color: #aabbcc; font-size: 0.85rem; line-height: 1.6;
+    }
+    .womd-callout code {
+      background: #1a2a3a; padding: 1px 5px; border-radius: 3px; color: #66ccff; font-size: 0.82rem;
+    }
+
+    .badge-womd {
+      display: inline-block;
+      background: #003366;
+      color: #66aaff;
+      border: 1px solid #224488;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      margin-top: 6px;
+      letter-spacing: 0.02em;
+    }
+
     @media (max-width: 840px) {
       h1 { font-size: 2.2rem; }
       .cards { grid-template-columns: 1fr; }
@@ -404,26 +521,44 @@
 <!-- ── HERO ─────────────────────────────────────────────── -->
 <section id="hero">
   <div class="container">
-    <div class="hero-tag">AV Simulation &nbsp;·&nbsp; Evaluation &nbsp;·&nbsp; Safety Testing</div>
-    <h1>av-sim-bench</h1>
-    <p class="hero-subtitle">
-      An automated evaluation framework for autonomous driving simulators —
-      safety compliance, behavioural regression detection, and statistical fidelity testing.
-    </p>
-    <a href="https://github.com/venugopalbogireddy/av-sim-bench" target="_blank" rel="noopener" class="btn">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
-          0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
-          -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
-          .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
-          -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27
-          .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
-          .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
-          0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-      </svg>
-      View on GitHub
-    </a>
-    <a href="#projects" class="btn btn-ghost">Explore projects</a>
+    <div class="hero-inner">
+      <div class="hero-text">
+        <div class="hero-tag">AV Simulation &nbsp;·&nbsp; Evaluation &nbsp;·&nbsp; Safety Testing</div>
+        <h1>av-sim-bench</h1>
+        <p class="hero-subtitle">
+          An automated evaluation framework for autonomous driving simulators —
+          safety compliance, behavioural regression detection, and statistical fidelity testing.
+        </p>
+        <div class="hero-actions">
+          <a href="https://github.com/venugopalbogireddy/av-sim-bench" target="_blank" rel="noopener" class="btn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+                0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+                -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+                .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+                -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27
+                .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
+                .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+                0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            View on GitHub
+          </a>
+          <a href="#projects" class="btn btn-ghost">Explore projects</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><span class="stat-n">3</span><span class="stat-label">Eval Frameworks</span></div>
+          <div class="hero-stat"><span class="stat-n">5</span><span class="stat-label">Behavioral Metrics</span></div>
+          <div class="hero-stat"><span class="stat-n">70</span><span class="stat-label">Real Vehicles</span></div>
+          <div class="hero-stat"><span class="stat-n">93</span><span class="stat-label">Tests Passing</span></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-visual-label">Real Waymo intersection &nbsp;·&nbsp; 70 vehicles &nbsp;·&nbsp; San Francisco</div>
+        <img src="assets/p1_womd_agents.gif"
+             alt="70 real Waymo vehicles navigating a San Francisco intersection"
+             loading="lazy">
+      </div>
+    </div>
   </div>
 </section>
 
@@ -457,6 +592,7 @@
           <code style="font-size:0.78rem;color:var(--accent)">metrics.json</code>
           + a 4-panel dashboard PNG — answering whether the simulator did the right thing.
         </p>
+        <span class="badge-womd">✓ Validated on Waymo Open Motion Dataset</span>
         <div class="card-finding">
           5 metrics &nbsp;·&nbsp; 3 scenarios &nbsp;·&nbsp; catches stop violations,
           red-light runners, and KS-detected speed drift
@@ -528,11 +664,11 @@
   </div>
 </section>
 
-<!-- ── P1 HOW IT WORKS ────────────────────────────────────── -->
+<!-- ── P1 — FULL STORY ────────────────────────────────────── -->
 <section id="p1">
   <div class="container">
     <div class="section-label">Deep Dive &nbsp;·&nbsp; P1</div>
-    <h2>Log-Replay Evaluator — How it works</h2>
+    <h2>Log-Replay Evaluator</h2>
 
     <h3 style="color:var(--text-dim);font-size:0.85rem;font-weight:500;margin-bottom:12px;">Architecture</h3>
     <pre class="arch-pre">src/evaluator/
@@ -547,23 +683,8 @@
 │  geometry)  │ ──────▶ └──────────────┘            └─────────────────┘                  └─────────────┘
 └─────────────┘</pre>
 
-    <h3 style="margin-bottom:16px;">Metrics — 3-scenario comparison</h3>
-    <div class="table-wrap">
-      <div id="metrics-table"><p class="loading">Loading metrics…</p></div>
-    </div>
-
-    <img src="assets/dashboard.png" alt="P1 4-panel dashboard: speed histogram, stop compliance bar, violation summary, KS p-value" class="img-full">
-    <p class="img-caption">
-      P1 dashboard: speed histogram, stop compliance bar, violation summary, and KS p-value across all 3 scenarios
-    </p>
-  </div>
-</section>
-
-<!-- ── P1 AGENT GIF ───────────────────────────────────────── -->
-<section id="gif">
-  <div class="container">
-    <div class="section-label">Agent Trajectories &nbsp;·&nbsp; P1</div>
-    <h2>Visualising agent behaviour</h2>
+    <!-- Agent trajectories -->
+    <h3 style="color:var(--heading);font-size:1.05rem;font-weight:600;margin:52px 0 12px;">Agent trajectories — synthetic scenarios</h3>
     <p style="color:var(--text-dim);margin-bottom:28px;max-width:680px;line-height:1.8;">
       Top-down 1D track animation: 4 agents as dots moving toward the goal (y&nbsp;=&nbsp;50&nbsp;m).
       Stop zone (y&nbsp;=&nbsp;18–22&nbsp;m) and intersection (y&nbsp;=&nbsp;22–28&nbsp;m) are marked.
@@ -576,7 +697,102 @@
         onerror="this.parentElement.innerHTML='<p style=\'color:var(--text-dim);padding:40px;font-size:0.9rem\'>Animation will appear here (run scripts/gen_gif.py to generate).</p>'"
       >
     </div>
+
+  </div><!-- /.container -->
+
+  <!-- Real Data Validation — full-bleed band -->
+  <div class="p1-womd-band">
+    <div class="container">
+      <div class="womd-header">
+        <span class="womd-badge">✓ Validated on Waymo Open Motion Dataset</span>
+        <h2>Real Data Validation</h2>
+        <p class="womd-subtitle">
+          The same 5 metrics. The same CLI. Zero code changes.<br>
+          Ingested real WOMD agent trajectories via a TF-free protobuf adapter —
+          metrics ran unchanged on 70 real vehicles across a live San Francisco intersection.
+        </p>
+      </div>
+
+      <div class="womd-grid">
+        <!-- Left: real intersection GIF -->
+        <div class="womd-col">
+          <div class="womd-label">Real Waymo Intersection — 70 vehicles, 9.1s scenario</div>
+          <img src="assets/p1_womd_agents.gif"
+               alt="70 real Waymo vehicles moving through a real San Francisco intersection"
+               class="womd-gif" loading="lazy">
+          <p class="womd-caption">
+            Road geometry, signal-controlled lanes, and stop signs rendered from
+            the Waymo HD map. Agents colour-coded: <span class="dot-green">●</span> moving
+            &nbsp;<span class="dot-red">●</span> stopped.
+          </p>
+        </div>
+
+        <!-- Right: real dashboard + metrics diff -->
+        <div class="womd-col">
+          <div class="womd-label">Metric results on real data</div>
+          <img src="assets/p1_womd_dashboard.png"
+               alt="P1 metrics dashboard on real WOMD data"
+               class="womd-dashboard" loading="lazy">
+
+          <table class="diff-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Synthetic<br><span class="th-sub">golden baseline</span></th>
+                <th>Real WOMD<br><span class="th-sub">womd_golden</span></th>
+                <th>Δ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Stop compliance</td>
+                <td class="pass">1.00 ✓</td>
+                <td class="warn">0.625</td>
+                <td class="delta-neg">−37.5%</td>
+              </tr>
+              <tr>
+                <td>Red-light violation</td>
+                <td class="pass">0.00 ✓</td>
+                <td class="pass">0.00 ✓</td>
+                <td class="delta-flat">—</td>
+              </tr>
+              <tr>
+                <td>Collision proxy</td>
+                <td class="pass">0 ✓</td>
+                <td class="pass">0 ✓</td>
+                <td class="delta-flat">—</td>
+              </tr>
+              <tr>
+                <td>Route completion</td>
+                <td class="pass">1.00 ✓</td>
+                <td class="pass">1.00 ✓</td>
+                <td class="delta-flat">—</td>
+              </tr>
+              <tr>
+                <td>Speed KS test</td>
+                <td class="pass">p=1.0 ✓</td>
+                <td class="pass">p=1.0 ✓</td>
+                <td class="delta-flat">—</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="womd-caption">
+            Stop compliance drop is real signal: real drivers don't hold a 1-second
+            full stop at every sign. Exactly the kind of gap a production eval pipeline
+            surfaces — and exactly why this metric exists.
+          </p>
+        </div>
+      </div>
+
+      <div class="womd-callout">
+        <strong>Zero code changes to run on real data.</strong>
+        The Parquet schema and <code>MetricResult</code> interface were designed for this from day one.
+        A TF-free protobuf adapter converts WOMD TFRecords → P1 schema in one CLI command:
+        <code>evaluator womd ingest --input &lt;tfrecord-dir&gt;</code>
+      </div>
+    </div>
   </div>
+
 </section>
 
 <!-- ── P2 DEEP DIVE ────────────────────────────────────────── -->
@@ -752,7 +968,10 @@
       <span>Matplotlib</span> &nbsp;·&nbsp;
       <span>Seaborn</span> &nbsp;·&nbsp;
       <span>Click</span> &nbsp;·&nbsp;
-      <span>Pytest</span>
+      <span>Pytest</span> &nbsp;·&nbsp;
+      <span>Waymo Open Motion Dataset</span> &nbsp;·&nbsp;
+      <span>Protocol Buffers</span> &nbsp;·&nbsp;
+      <span>grpcio-tools</span>
     </div>
   </div>
 </section>
@@ -798,69 +1017,6 @@ function toggleP3Detail(btn) {
   btn.childNodes[0].textContent = isOpen ? ' Show test breakdown ' : ' Hide test breakdown ';
 }
 
-(async () => {
-  const el = document.getElementById('metrics-table');
-  try {
-    const res = await fetch('data/metrics.json');
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-
-    const scenarios = ['golden', 'noisy', 'regression'];
-    const metricOrder = [
-      'stop_sign_compliance',
-      'red_light_violation_rate',
-      'collision_proxy',
-      'route_completion',
-      'speed_ks_test'
-    ];
-    const metricLabels = {
-      stop_sign_compliance:     'Stop sign compliance',
-      red_light_violation_rate: 'Red-light violation rate',
-      collision_proxy:          'Collision proxy (count)',
-      route_completion:         'Route completion',
-      speed_ks_test:            'Speed KS test (p-value)'
-    };
-
-    const idx = {};
-    for (const sc of scenarios) {
-      idx[sc] = {};
-      for (const m of data[sc]) idx[sc][m.name] = m;
-    }
-
-    let html = `<table>
-      <thead>
-        <tr>
-          <th>Metric</th>
-          ${scenarios.map(s => `<th>${s.charAt(0).toUpperCase() + s.slice(1)}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>`;
-
-    for (const name of metricOrder) {
-      html += `<tr><td class="metric-name">${metricLabels[name]}</td>`;
-      for (const sc of scenarios) {
-        const m = idx[sc] && idx[sc][name];
-        if (!m) { html += `<td style="color:var(--text-dim)">—</td>`; continue; }
-        const cls = m.passed ? 'badge-pass' : 'badge-fail';
-        const icon = m.passed ? '✓' : '✗';
-        const val = typeof m.value === 'number'
-          ? (m.value === Math.floor(m.value) ? m.value : m.value.toFixed(2))
-          : m.value;
-        html += `<td><span class="badge ${cls}">${icon} ${val}</span></td>`;
-      }
-      html += `</tr>`;
-    }
-
-    html += `</tbody></table>`;
-    el.innerHTML = html;
-  } catch (e) {
-    el.innerHTML = `<p style="color:var(--text-dim);font-size:0.85rem;">
-      Metrics table requires HTTP serving.
-      Run: <code style="color:var(--accent)">python3 -m http.server 8080</code>
-      from the docs/ folder, then open <code style="color:var(--accent)">http://localhost:8080</code>.
-    </p>`;
-  }
-})();
 </script>
 
 </body>
