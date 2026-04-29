@@ -80,6 +80,31 @@ def stop_sign_compliance(df: pd.DataFrame) -> MetricResult:
 
 # ── 2. Red-light violation rate ───────────────────────────────────────────────
 
+def _entered_on_green(df: pd.DataFrame) -> pd.Index:
+    """Return row indices of in-intersection frames for agents that entered on GREEN.
+
+    For each agent, detects every contiguous intersection traversal by finding
+    False→True transitions on `in_intersection`. If the light was GREEN at the
+    entry frame of a traversal, all rows in that traversal are exempt from the
+    red-light violation filter — the agent entered legally and should not be
+    penalised if the signal flips RED mid-crossing.
+
+    Handles multiple crossings per agent: each traversal is evaluated independently.
+    """
+    exempt: list = []
+    for _, agent_df in df.groupby("agent_id"):
+        s = agent_df.sort_values("timestamp_ms")
+        in_zone = s["in_intersection"]
+        # False→True transition marks the start of a new traversal
+        is_entry = in_zone & ~in_zone.shift(1, fill_value=False)
+        # cumsum gives a monotonically increasing ID per traversal
+        crossing_id = is_entry.cumsum()
+        for _, crossing in s[in_zone].groupby(crossing_id[in_zone]):
+            if crossing.iloc[0]["traffic_light_state"] == "GREEN":
+                exempt.extend(crossing.index.tolist())
+    return pd.Index(exempt)
+
+
 def red_light_violation_rate(df: pd.DataFrame) -> MetricResult:
     """Fraction of agents that drove through the intersection while light == RED.
 
@@ -88,12 +113,20 @@ def red_light_violation_rate(df: pd.DataFrame) -> MetricResult:
     A violation requires the agent to be inside the intersection AND moving (speed > 0)
     while the light is RED. An agent stopped inside the intersection waiting for green
     is NOT a violation.
+
+    Agents that entered the intersection on GREEN are exempt even if the light flips
+    RED mid-crossing (SG-06). Only agents whose first in-intersection frame is RED
+    (or YELLOW) are subject to the violation filter.
     """
-    violating_rows = df[
+    exempt = _entered_on_green(df)
+
+    candidate_rows = df[
         df["in_intersection"]
         & (df["traffic_light_state"] == "RED")
-        & (df["speed_mps"] > STOP_SPEED_THRESHOLD)  # any movement = violation
+        & (df["speed_mps"] > STOP_SPEED_THRESHOLD)
     ]
+    violating_rows = candidate_rows[~candidate_rows.index.isin(exempt)]
+
     all_agents = df["agent_id"].unique()
     violators = violating_rows["agent_id"].unique()
     rate = len(violators) / max(len(all_agents), 1)

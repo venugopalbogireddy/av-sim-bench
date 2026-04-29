@@ -135,6 +135,59 @@ class TestRedLightViolationRate:
         r = red_light_violation_rate(df)
         assert r.passed is True
 
+    # ── SG-06: entered-on-GREEN exemption ─────────────────────────────────────
+
+    def test_entered_on_green_exempts_mid_crossing_red(self):
+        # Agent enters on GREEN, light flips RED mid-crossing — legal traversal, not a violation
+        df = pd.DataFrame([
+            _base_row(timestamp_ms=0,   in_intersection=False, traffic_light_state="GREEN"),
+            _base_row(timestamp_ms=100, in_intersection=True,  traffic_light_state="GREEN"),
+            _base_row(timestamp_ms=200, in_intersection=True,  traffic_light_state="RED"),
+            _base_row(timestamp_ms=300, in_intersection=True,  traffic_light_state="RED"),
+            _base_row(timestamp_ms=400, in_intersection=False, traffic_light_state="RED"),
+        ])
+        r = red_light_violation_rate(df)
+        assert r.passed is True
+        assert r.value == pytest.approx(0.0)
+
+    def test_entered_on_red_is_violation(self):
+        # First in-intersection frame is already RED + moving — genuine violation
+        df = pd.DataFrame([
+            _base_row(timestamp_ms=0,   in_intersection=False, traffic_light_state="GREEN"),
+            _base_row(timestamp_ms=100, in_intersection=True,  traffic_light_state="RED"),
+            _base_row(timestamp_ms=200, in_intersection=True,  traffic_light_state="RED"),
+        ])
+        r = red_light_violation_rate(df)
+        assert r.passed is False
+        assert r.value == pytest.approx(1.0)
+
+    def test_entered_on_yellow_not_exempt(self):
+        # YELLOW entry does not grant exemption — only GREEN does
+        df = pd.DataFrame([
+            _base_row(timestamp_ms=0,   in_intersection=False, traffic_light_state="GREEN"),
+            _base_row(timestamp_ms=100, in_intersection=True,  traffic_light_state="YELLOW"),
+            _base_row(timestamp_ms=200, in_intersection=True,  traffic_light_state="RED"),
+        ])
+        r = red_light_violation_rate(df)
+        assert r.passed is False
+        assert r.value == pytest.approx(1.0)
+
+    def test_two_crossings_first_green_second_red(self):
+        # First traversal: entered GREEN, light flips RED mid-crossing → exempt
+        # Second traversal: entered directly on RED → violation
+        df = pd.DataFrame([
+            _base_row(timestamp_ms=0,   in_intersection=False, traffic_light_state="GREEN"),
+            _base_row(timestamp_ms=100, in_intersection=True,  traffic_light_state="GREEN"),
+            _base_row(timestamp_ms=200, in_intersection=True,  traffic_light_state="RED"),
+            _base_row(timestamp_ms=300, in_intersection=False, traffic_light_state="RED"),
+            _base_row(timestamp_ms=400, in_intersection=False, traffic_light_state="RED"),
+            _base_row(timestamp_ms=500, in_intersection=True,  traffic_light_state="RED"),
+            _base_row(timestamp_ms=600, in_intersection=True,  traffic_light_state="RED"),
+        ])
+        r = red_light_violation_rate(df)
+        assert r.passed is False
+        assert r.value == pytest.approx(1.0)
+
 
 # ── collision_proxy ───────────────────────────────────────────────────────────
 
