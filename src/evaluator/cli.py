@@ -10,14 +10,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
-import pyarrow.parquet as pq
 
+from evaluator.db import LogStore
 from evaluator.log_gen import generate_all
 from evaluator.metrics import compute_all, MetricResult
-
-
-def _load(path: Path) -> pd.DataFrame:
-    return pq.read_table(path).to_pandas()
 
 
 def _build_dashboard(results_by_run: dict[str, list[MetricResult]],
@@ -103,17 +99,19 @@ def main() -> None:
 
 
 @main.command()
-@click.option("--logs", required=True, type=click.Path(exists=True), help="Directory of .parquet log files")
-@click.option("--baseline", required=True, type=click.Path(exists=True), help="Baseline parquet file (golden run)")
-@click.option("--out", required=True, type=click.Path(), help="Output directory for metrics.json + dashboard.png")
-def run(logs: str, baseline: str, out: str) -> None:
+@click.option("--logs", required=True, type=click.Path(exists=True),
+              help="Directory of .parquet log files")
+@click.option("--baseline", default=None, type=click.Path(exists=True),
+              help="Explicit baseline .parquet path. Overrides --baseline-scenario.")
+@click.option("--baseline-scenario", default="golden", show_default=True,
+              help="run_id to use as baseline; auto-loads the latest file for this scenario.")
+@click.option("--out", required=True, type=click.Path(),
+              help="Output directory for metrics.json + dashboard.png")
+def run(logs: str, baseline: str | None, baseline_scenario: str, out: str) -> None:
     """Evaluate all .parquet logs in LOGS against BASELINE."""
     logs_dir = Path(logs)
     out_dir = Path(out)
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    baseline_df = _load(Path(baseline))
-    print(f"Baseline loaded: {len(baseline_df):,} rows from {baseline}")
 
     log_files = sorted(logs_dir.glob("*.parquet"))
     if not log_files:
@@ -122,17 +120,33 @@ def run(logs: str, baseline: str, out: str) -> None:
     all_metrics: dict[str, list] = {}
     log_dfs: dict[str, pd.DataFrame] = {}
 
-    for log_path in log_files:
-        run_name = log_path.stem
-        df = _load(log_path)
-        log_dfs[run_name] = df
-        results = compute_all(df, baseline_df)
-        all_metrics[run_name] = results
+    with LogStore.from_dir(logs_dir) as store:
+        file_map = store.run_file_map()
 
-        print(f"\n── {run_name} ({len(df):,} rows) ──")
-        for r in results:
-            status = "PASS" if r.passed else "FAIL"
-            print(f"  [{status}] {r.name}: {r.value}")
+        if baseline:
+            with LogStore.from_file(Path(baseline)) as bs:
+                baseline_df = bs.load_all()
+            print(f"Baseline loaded: {len(baseline_df):,} rows from {baseline}")
+        else:
+            if baseline_scenario not in store.run_ids():
+                raise click.ClickException(
+                    f"Baseline scenario '{baseline_scenario}' not found in {logs_dir}. "
+                    f"Available: {store.run_ids()}"
+                )
+            baseline_df = store.load_run(baseline_scenario)
+            print(f"Baseline: {file_map[baseline_scenario]} ({len(baseline_df):,} rows)")
+
+        for run_id in store.run_ids():
+            label = file_map[run_id]
+            df = store.load_run(run_id)
+            log_dfs[label] = df
+            results = compute_all(df, baseline_df)
+            all_metrics[label] = results
+
+            print(f"\n── {label} ({len(df):,} rows) ──")
+            for r in results:
+                status = "PASS" if r.passed else "FAIL"
+                print(f"  [{status}] {r.name}: {r.value}")
 
     # Write metrics.json
     metrics_out = out_dir / "metrics.json"
@@ -290,13 +304,15 @@ def sim_run(config: str, out: str) -> None:
 @sim.command("eval")
 @click.option("--logs", required=True, type=click.Path(exists=True),
               help="Directory of P2 .parquet logs")
-@click.option("--baseline", required=True, type=click.Path(exists=True),
-              help="Baseline parquet (golden run)")
+@click.option("--baseline", default=None, type=click.Path(exists=True),
+              help="Explicit baseline .parquet path. Overrides --baseline-scenario.")
+@click.option("--baseline-scenario", default="golden", show_default=True,
+              help="run_id to use as baseline; auto-loads the latest file for this scenario.")
 @click.option("--config", required=True, type=click.Path(exists=True),
               help="Scenario YAML config used to reconstruct A* plans")
 @click.option("--out", required=True, type=click.Path(),
               help="Output directory for metrics.json + dashboard.png")
-def sim_eval(logs: str, baseline: str, config: str, out: str) -> None:
+def sim_eval(logs: str, baseline: str | None, baseline_scenario: str, config: str, out: str) -> None:
     """Evaluate P2 graph-world logs (6 metrics, graph-aware)."""
     from evaluator.sim_metrics import compute_all as p2_compute_all
 
@@ -305,8 +321,6 @@ def sim_eval(logs: str, baseline: str, config: str, out: str) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     goal_node_id, plans = _reconstruct_plans(Path(config))
-    baseline_df = _load(Path(baseline))
-    print(f"Baseline loaded: {len(baseline_df):,} rows | goal={goal_node_id}")
 
     log_files = sorted(logs_dir.glob("*.parquet"))
     if not log_files:
@@ -315,17 +329,33 @@ def sim_eval(logs: str, baseline: str, config: str, out: str) -> None:
     all_metrics: dict[str, list] = {}
     log_dfs: dict[str, pd.DataFrame] = {}
 
-    for log_path in log_files:
-        run_name = log_path.stem
-        df = _load(log_path)
-        log_dfs[run_name] = df
-        results = p2_compute_all(df, baseline_df, goal_node_id, plans)
-        all_metrics[run_name] = results
+    with LogStore.from_dir(logs_dir) as store:
+        file_map = store.run_file_map()
 
-        print(f"\n── {run_name} ({len(df):,} rows) ──")
-        for r in results:
-            status = "PASS" if r.passed else "FAIL"
-            print(f"  [{status}] {r.name}: {r.value}")
+        if baseline:
+            with LogStore.from_file(Path(baseline)) as bs:
+                baseline_df = bs.load_all()
+            print(f"Baseline loaded: {len(baseline_df):,} rows | goal={goal_node_id}")
+        else:
+            if baseline_scenario not in store.run_ids():
+                raise click.ClickException(
+                    f"Baseline scenario '{baseline_scenario}' not found in {logs_dir}. "
+                    f"Available: {store.run_ids()}"
+                )
+            baseline_df = store.load_run(baseline_scenario)
+            print(f"Baseline: {file_map[baseline_scenario]} ({len(baseline_df):,} rows) | goal={goal_node_id}")
+
+        for run_id in store.run_ids():
+            label = file_map[run_id]
+            df = store.load_run(run_id)
+            log_dfs[label] = df
+            results = p2_compute_all(df, baseline_df, goal_node_id, plans)
+            all_metrics[label] = results
+
+            print(f"\n── {label} ({len(df):,} rows) ──")
+            for r in results:
+                status = "PASS" if r.passed else "FAIL"
+                print(f"  [{status}] {r.name}: {r.value}")
 
     metrics_out = out_dir / "p2_metrics.json"
     payload = {run: [r.as_dict() for r in res] for run, res in all_metrics.items()}
@@ -371,16 +401,10 @@ def pipeline_run(configs_dir: str, out_data: str, out_eval: str, baseline_scenar
         path = run_scenario(cfg, out_data_path)
         log_paths[cfg.stem] = path
 
-    # ── find baseline ────────────────────────────────────────────────────────
+    # ── find baseline config ─────────────────────────────────────────────────
     baseline_cfg = configs_path / f"p2_{baseline_scenario}.yaml"
     if not baseline_cfg.exists():
         raise click.ClickException(f"Baseline config not found: {baseline_cfg}")
-
-    # find latest baseline parquet
-    baseline_files = sorted(out_data_path.glob(f"p2_{baseline_scenario}_*.parquet"))
-    if not baseline_files:
-        raise click.ClickException("Baseline parquet not found in out_data")
-    baseline_df = _load(baseline_files[-1])
     goal_node_id, plans = _reconstruct_plans(baseline_cfg)
 
     # ── eval phase ───────────────────────────────────────────────────────────
@@ -388,15 +412,24 @@ def pipeline_run(configs_dir: str, out_data: str, out_eval: str, baseline_scenar
     all_metrics: dict[str, list] = {}
     log_dfs: dict[str, pd.DataFrame] = {}
 
-    for log_path in sorted(out_data_path.glob("p2_*.parquet")):
-        run_name = log_path.stem
-        df = _load(log_path)
-        log_dfs[run_name] = df
-        results = p2_compute_all(df, baseline_df, goal_node_id, plans)
-        all_metrics[run_name] = results
-        print(f"\n── {run_name} ({len(df):,} rows) ──")
-        for r in results:
-            print(f"  [{'PASS' if r.passed else 'FAIL'}] {r.name}: {r.value}")
+    with LogStore.from_dir(out_data_path) as store:
+        if baseline_scenario not in store.run_ids():
+            raise click.ClickException(
+                f"Baseline scenario '{baseline_scenario}' not found in {out_data_path}"
+            )
+        file_map = store.run_file_map()
+        baseline_df = store.load_run(baseline_scenario)
+        print(f"Baseline: {file_map[baseline_scenario]} ({len(baseline_df):,} rows) | goal={goal_node_id}")
+
+        for run_id in store.run_ids():
+            label = file_map[run_id]
+            df = store.load_run(run_id)
+            log_dfs[label] = df
+            results = p2_compute_all(df, baseline_df, goal_node_id, plans)
+            all_metrics[label] = results
+            print(f"\n── {label} ({len(df):,} rows) ──")
+            for r in results:
+                print(f"  [{'PASS' if r.passed else 'FAIL'}] {r.name}: {r.value}")
 
     metrics_out = out_eval_path / "p2_metrics.json"
     payload = {run: [r.as_dict() for r in res] for run, res in all_metrics.items()}
@@ -467,11 +500,85 @@ def ab_run(candidate: str, n_samples: int, out: str, no_viz: bool) -> None:
         import numpy as np
         rng_base = np.random.default_rng(0)
         rng_cand = np.random.default_rng(1)
-        import importlib
         base_df = _base.generate(n=n_samples, rng=rng_base, run_id="baseline")
         cand_df = cand_fn(n=n_samples, rng=rng_cand, run_id=label)
         png_path = plot_summary(base_df, cand_df, label, out_dir)
         print(f"  Plot  → {png_path}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  WOMD — Real Waymo Open Motion Dataset ingestion
+# ═══════════════════════════════════════════════════════════════════════════
+
+@main.group()
+def womd() -> None:
+    """Ingest real Waymo Open Motion Dataset TFRecord files into P1 Parquet logs."""
+
+
+_WOMD_SRC_DEFAULT = "../waymo-car/waymo-open-dataset/src"
+
+
+@womd.command("setup")
+@click.option("--womd-src", default=_WOMD_SRC_DEFAULT, show_default=True, type=click.Path(),
+              help="Path to waymo-open-dataset/src (contains waymo_open_dataset/)")
+def womd_setup(womd_src: str) -> None:
+    """Compile WOMD .proto files → _pb2.py (one-time setup, no TF needed).
+
+    Requires: pip install grpcio-tools
+
+    Example:
+        PYTHONPATH=src python -m evaluator.cli womd setup \\
+            --womd-src ../waymo-car/waymo-open-dataset/src
+    """
+    from evaluator.womd_adapter import compile_protos
+
+    src = Path(womd_src)
+    if not src.exists():
+        raise click.ClickException(f"womd-src not found: {src}")
+
+    print(f"Compiling WOMD protos in {src} …")
+    compile_protos(src)
+    print("Setup complete. Now run: evaluator womd ingest --womd-src", womd_src)
+
+
+@womd.command("ingest")
+@click.option("--input", "input_dir", required=True, type=click.Path(exists=True),
+              help="Directory containing .tfrecord files from WOMD")
+@click.option("--womd-src", default=_WOMD_SRC_DEFAULT, show_default=True, type=click.Path(),
+              help="Path to waymo-open-dataset/src (must have run womd setup first)")
+@click.option("--out", default="data/womd", show_default=True, type=click.Path(),
+              help="Output directory for P1-schema Parquet files")
+@click.option("--max-scenarios", default=50, show_default=True, type=int,
+              help="Max scenarios to parse (cap for large downloads)")
+def womd_ingest(input_dir: str, womd_src: str, out: str, max_scenarios: int) -> None:
+    """Convert WOMD TFRecords → P1 Parquet (golden / regression / noisy).
+
+    No tensorflow required — pure Python + protobuf only.
+
+    Full workflow:
+        # 1. Compile protos once
+        PYTHONPATH=src python -m evaluator.cli womd setup
+
+        # 2. Ingest sample testdata (already in waymo-car/)
+        PYTHONPATH=src python -m evaluator.cli womd ingest \\
+          --input ../waymo-car/waymo-open-dataset/src/waymo_open_dataset/utils/testdata/
+
+        # 3. Run P1 metrics on real data
+        PYTHONPATH=src python -m evaluator.cli run \\
+          --logs data/womd --baseline-scenario womd_golden --out outputs/womd
+    """
+    from evaluator.womd_adapter import convert_tfrecord_dir
+
+    print(f"Ingesting WOMD TFRecords from: {input_dir}")
+    written = convert_tfrecord_dir(
+        input_dir=Path(input_dir),
+        out_dir=Path(out),
+        womd_src=Path(womd_src),
+        max_scenarios=max_scenarios,
+    )
+    print(f"\nDone. {len(written)} Parquet file(s) written to {out}")
+    print(f"Next: PYTHONPATH=src python -m evaluator.cli run "
+          f"--logs {out} --baseline-scenario womd_golden --out outputs/womd")
 
 
 if __name__ == "__main__":
